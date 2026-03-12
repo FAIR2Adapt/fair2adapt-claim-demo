@@ -350,12 +350,27 @@ export async function handler(event) {
 
   try {
     console.log("Processing PDF upload. Body length:", event.body?.length, "Base64:", event.isBase64Encoded);
+    console.log("Headers:", JSON.stringify(event.headers));
+
     // 1. Parse uploaded PDF
-    const { buffer, filename } = await parseMultipart(event);
-    console.log("Parsed PDF:", filename, "Size:", buffer.length);
+    let buffer, filename;
+    try {
+      ({ buffer, filename } = await parseMultipart(event));
+      console.log("Parsed PDF:", filename, "Size:", buffer.length);
+    } catch (parseErr) {
+      console.error("Multipart parse error:", parseErr.message);
+      return { statusCode: 400, body: JSON.stringify({ message: "Failed to parse upload: " + parseErr.message }) };
+    }
 
     // 2. Extract DOI from PDF text for metadata lookup
-    const pdfData = await pdf(buffer);
+    let pdfData;
+    try {
+      pdfData = await pdf(buffer);
+      console.log("PDF text extracted, length:", pdfData.text?.length);
+    } catch (pdfErr) {
+      console.error("PDF parse error:", pdfErr.message);
+      return { statusCode: 400, body: JSON.stringify({ message: "Failed to read PDF: " + pdfErr.message }) };
+    }
     const doi = extractDOI(pdfData.text);
     let title = "Untitled";
 
