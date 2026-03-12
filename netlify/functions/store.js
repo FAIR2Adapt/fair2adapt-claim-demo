@@ -1,47 +1,19 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join } from "path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
 
-const DATA_FILE = join(process.cwd(), "data", "papers.json");
 const IS_NETLIFY = !!process.env.NETLIFY || process.cwd().startsWith("/var/task");
+const DATA_FILE = IS_NETLIFY ? "/tmp/papers.json" : join(process.cwd(), "data", "papers.json");
 
-// ---- Netlify Blobs (production) ----
-async function getBlobStore() {
-  const { getStore } = await import("@netlify/blobs");
-  return getStore("papers");
-}
-
-async function loadPapersBlob() {
-  try {
-    const store = await getBlobStore();
-    const data = await store.get("papers.json");
-    return data ? JSON.parse(data) : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-async function savePaperBlob(paper) {
-  const papers = await loadPapersBlob();
-  const idx = papers.findIndex((p) => p.id === paper.id);
-  if (idx >= 0) {
-    papers[idx] = paper;
-  } else {
-    papers.unshift(paper);
-  }
-  const store = await getBlobStore();
-  await store.set("papers.json", JSON.stringify(papers, null, 2));
-  return paper;
-}
-
-// ---- Local file (development) ----
-function loadPapersLocal() {
+function loadPapersFromFile() {
   if (!existsSync(DATA_FILE)) return [];
   const raw = readFileSync(DATA_FILE, "utf-8");
   return JSON.parse(raw);
 }
 
-function savePaperLocal(paper) {
-  const papers = loadPapersLocal();
+function savePaperToFile(paper) {
+  const dir = dirname(DATA_FILE);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const papers = loadPapersFromFile();
   const idx = papers.findIndex((p) => p.id === paper.id);
   if (idx >= 0) {
     papers[idx] = paper;
@@ -52,11 +24,10 @@ function savePaperLocal(paper) {
   return paper;
 }
 
-// ---- Exports: auto-detect environment ----
 export async function loadPapers() {
-  return IS_NETLIFY ? loadPapersBlob() : loadPapersLocal();
+  return loadPapersFromFile();
 }
 
 export async function savePaper(paper) {
-  return IS_NETLIFY ? savePaperBlob(paper) : savePaperLocal(paper);
+  return savePaperToFile(paper);
 }
