@@ -20,6 +20,31 @@ const progressText = document.getElementById("progress-text");
 const feedEl = document.getElementById("feed");
 const paginationEl = document.getElementById("pagination");
 
+// ---- Local storage helpers ----
+function loadPapersLocal() {
+  try {
+    return JSON.parse(localStorage.getItem("fair2adapt_papers") || "[]");
+  } catch (_) {
+    return [];
+  }
+}
+
+function savePapersLocal(papers) {
+  localStorage.setItem("fair2adapt_papers", JSON.stringify(papers));
+}
+
+function addPaperLocal(paper) {
+  const papers = loadPapersLocal();
+  const idx = papers.findIndex((p) => p.id === paper.id);
+  if (idx >= 0) {
+    papers[idx] = paper;
+  } else {
+    papers.unshift(paper);
+  }
+  savePapersLocal(papers);
+  return papers;
+}
+
 // ---- Panel toggle ----
 addBtn.addEventListener("click", () => {
   addPanel.classList.remove("hidden");
@@ -102,8 +127,10 @@ form.addEventListener("submit", async (e) => {
     showStatus(`Extracted ${result.claims.length} AIDA claims.`, "success");
     showProgress(100, "Complete!");
 
+    // Save to localStorage and refresh feed
+    allPapers = addPaperLocal(result);
     currentPage = 1;
-    await loadFeed();
+    renderCurrentPage();
     setTimeout(hideProgress, 2000);
   } catch (err) {
     showStatus("Error: " + err.message, "error");
@@ -140,17 +167,28 @@ bibtexForm.addEventListener("submit", async (e) => {
       body: JSON.stringify({ bibtex: bibtexContent }),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Processing failed");
+    const text = await response.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (_) {
+      throw new Error(`Server returned non-JSON (status ${response.status}): ${text.slice(0, 200)}`);
     }
 
-    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Processing failed");
+    }
+
     showStatus(`Processed ${result.processed} of ${result.total} papers.`, "success");
     showProgress(100, "Complete!");
 
+    // Save all papers to localStorage
+    for (const paper of result.papers) {
+      addPaperLocal(paper);
+    }
+    allPapers = loadPapersLocal();
     currentPage = 1;
-    await loadFeed();
+    renderCurrentPage();
     setTimeout(hideProgress, 2000);
   } catch (err) {
     showStatus("Error: " + err.message, "error");
@@ -170,10 +208,6 @@ function renderPaperCard(paper) {
     month: "long",
     day: "numeric",
   });
-
-  // Template URIs for ScienceLive editor links
-  const AIDA_TEMPLATE_URI = "https://w3id.org/np/RA4fmfVFULMP50FqDFX8fEMn66uDF07vXKFXh_L9aoQKE";
-  const QUOTE_TEMPLATE_URI = "https://w3id.org/np/RA24onqmqTMsraJ7ypYFOuckmNWpo4Zv5gsLqhXt7xYPU";
 
   // AIDA Claims
   let claimsHtml = "";
@@ -332,19 +366,6 @@ function renderCurrentPage() {
   renderPagination();
 }
 
-// ---- Load feed ----
-async function loadFeed() {
-  try {
-    const response = await fetch("/.netlify/functions/get-papers");
-    if (!response.ok) throw new Error("Failed to load feed");
-
-    allPapers = await response.json();
-    renderCurrentPage();
-  } catch (err) {
-    feedEl.innerHTML = '<p class="empty-feed">Could not load feed.</p>';
-  }
-}
-
 // ---- Publish nanopub click handler ----
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest(".np-publish-btn");
@@ -378,7 +399,6 @@ document.addEventListener("click", async (e) => {
         <span class="np-published">published</span>
       `;
     } else {
-      // Not yet implemented — show message
       btn.textContent = "not yet signed";
       btn.disabled = true;
       btn.title = result.message;
@@ -390,5 +410,6 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// Load feed on page load
-loadFeed();
+// Load feed from localStorage on page load
+allPapers = loadPapersLocal();
+renderCurrentPage();
