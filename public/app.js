@@ -70,21 +70,35 @@ form.addEventListener("submit", async (e) => {
   showProgress(10, "Uploading...");
 
   try {
-    const formData = new FormData();
-    formData.append("pdf", file);
+    if (file.size > 4 * 1024 * 1024) {
+      throw new Error("PDF is too large (max 4 MB). Try a smaller file.");
+    }
+    showProgress(15, "Reading PDF...");
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.readAsDataURL(file);
+    });
     showProgress(20, "Enriching and extracting claims (this may take a minute)...");
 
     const response = await fetch("/.netlify/functions/process-paper", {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pdf_base64: base64, filename: file.name }),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Processing failed");
+    const text = await response.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (_) {
+      throw new Error(`Server returned non-JSON (status ${response.status}): ${text.slice(0, 200)}`);
     }
 
-    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || "Processing failed");
+    }
+
     showStatus(`Extracted ${result.claims.length} AIDA claims.`, "success");
     showProgress(100, "Complete!");
 

@@ -1,6 +1,5 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import Busboy from "busboy";
 import pdf from "pdf-parse";
 import { savePaper } from "./store.js";
 import { loginRoHub, getOrCreateClaimsFolder, createPaperRO, addROToFolder } from "./rohub.js";
@@ -16,40 +15,12 @@ const NANOPUB_DIR = IS_NETLIFY ? "/tmp/nanopubs" : join(process.cwd(), "data", "
 // ROHUB_USERNAME
 // ROHUB_PASSWORD
 
-// ---- Parse multipart form data ----
-function parseMultipart(event) {
-  return new Promise((resolve, reject) => {
-    // Netlify may use different header casing
-    const contentType = event.headers["content-type"] || event.headers["Content-Type"];
-    if (!contentType) return reject(new Error("Missing content-type header"));
-    const busboy = Busboy({
-      headers: { "content-type": contentType },
-    });
-
-    let fileBuffer = null;
-    let fileName = null;
-
-    busboy.on("file", (_fieldname, file, info) => {
-      fileName = info.filename;
-      const chunks = [];
-      file.on("data", (chunk) => chunks.push(chunk));
-      file.on("end", () => {
-        fileBuffer = Buffer.concat(chunks);
-      });
-    });
-
-    busboy.on("finish", () => {
-      if (!fileBuffer) return reject(new Error("No file uploaded"));
-      resolve({ buffer: fileBuffer, filename: fileName });
-    });
-
-    busboy.on("error", reject);
-
-    const body = event.isBase64Encoded
-      ? Buffer.from(event.body, "base64")
-      : Buffer.from(event.body);
-    busboy.end(body);
-  });
+// ---- Parse PDF from JSON body (base64-encoded) ----
+function parsePdfFromBody(event) {
+  const body = JSON.parse(event.body);
+  if (!body.pdf_base64) throw new Error("No PDF data provided");
+  const buffer = Buffer.from(body.pdf_base64, "base64");
+  return { buffer, filename: body.filename || "paper.pdf" };
 }
 
 // ---- Extract DOI from PDF text ----
@@ -349,16 +320,15 @@ export async function handler(event) {
   }
 
   try {
-    console.log("Processing PDF upload. Body length:", event.body?.length, "Base64:", event.isBase64Encoded);
-    console.log("Headers:", JSON.stringify(event.headers));
+    console.log("Processing PDF upload. Body length:", event.body?.length);
 
-    // 1. Parse uploaded PDF
+    // 1. Parse PDF from JSON body (base64-encoded)
     let buffer, filename;
     try {
-      ({ buffer, filename } = await parseMultipart(event));
+      ({ buffer, filename } = parsePdfFromBody(event));
       console.log("Parsed PDF:", filename, "Size:", buffer.length);
     } catch (parseErr) {
-      console.error("Multipart parse error:", parseErr.message);
+      console.error("Parse error:", parseErr.message);
       return { statusCode: 400, body: JSON.stringify({ message: "Failed to parse upload: " + parseErr.message }) };
     }
 

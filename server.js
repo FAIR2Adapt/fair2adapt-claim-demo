@@ -59,8 +59,8 @@ const server = createServer(async (req, res) => {
     const event = {
       httpMethod: "POST",
       headers: req.headers,
-      body: body.toString("base64"),
-      isBase64Encoded: true,
+      body: body.toString("utf-8"),
+      isBase64Encoded: false,
     };
     const result = await processPaper(event);
     res.writeHead(result.statusCode, result.headers || {});

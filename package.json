@@ -12,7 +12,6 @@
     "@nanopub/nanopub-js": "^0.1.0",
     "@nanopub/sign": "^0.1.0",
     "@netlify/blobs": "^10.7.2",
-    "busboy": "^1.6.0",
     "node-fetch": "^3.3.2",
     "pdf-parse": "^1.1.1"
   },
