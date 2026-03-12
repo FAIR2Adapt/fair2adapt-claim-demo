@@ -70,21 +70,21 @@ form.addEventListener("submit", async (e) => {
   showProgress(10, "Uploading...");
 
   try {
-    if (file.size > 4 * 1024 * 1024) {
-      throw new Error("PDF is too large (max 4 MB). Try a smaller file.");
+    showProgress(15, "Extracting text from PDF...");
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let pdfText = "";
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const content = await page.getTextContent();
+      pdfText += content.items.map((item) => item.str).join(" ") + "\n";
     }
-    showProgress(15, "Reading PDF...");
-    const base64 = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(",")[1]);
-      reader.readAsDataURL(file);
-    });
-    showProgress(20, "Enriching and extracting claims (this may take a minute)...");
+    showProgress(20, "Extracting claims (this may take a minute)...");
 
     const response = await fetch("/.netlify/functions/process-paper", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pdf_base64: base64, filename: file.name }),
+      body: JSON.stringify({ pdfText, filename: file.name }),
     });
 
     const text = await response.text();

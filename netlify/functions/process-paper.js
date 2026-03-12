@@ -1,6 +1,5 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import pdf from "pdf-parse";
 import { savePaper } from "./store.js";
 import { loginRoHub, getOrCreateClaimsFolder, createPaperRO, addROToFolder } from "./rohub.js";
 import { generateAIDANanopub, generateQuoteNanopub } from "./nanopub.js";
@@ -15,12 +14,11 @@ const NANOPUB_DIR = IS_NETLIFY ? "/tmp/nanopubs" : join(process.cwd(), "data", "
 // ROHUB_USERNAME
 // ROHUB_PASSWORD
 
-// ---- Parse PDF from JSON body (base64-encoded) ----
-function parsePdfFromBody(event) {
+// ---- Parse text + filename from JSON body ----
+function parseBodyText(event) {
   const body = JSON.parse(event.body);
-  if (!body.pdf_base64) throw new Error("No PDF data provided");
-  const buffer = Buffer.from(body.pdf_base64, "base64");
-  return { buffer, filename: body.filename || "paper.pdf" };
+  if (!body.pdfText) throw new Error("No PDF text provided");
+  return { pdfText: body.pdfText, filename: body.filename || "paper.pdf" };
 }
 
 // ---- Extract DOI from PDF text ----
@@ -64,130 +62,6 @@ async function getPaperMetadata(doi) {
   return null;
 }
 
-// ---- Call FAIR2Adapt enrich service (accepts full PDF) ----
-async function enrichPaper(pdfBuffer, filename) {
-  // Build multipart/form-data manually
-  const boundary = "----FormBoundary" + Date.now().toString(36);
-  const name = filename || "paper.pdf";
-
-  const header = Buffer.from(
-    `--${boundary}\r\n` +
-    `Content-Disposition: form-data; name="file"; filename="${name}"\r\n` +
-    `Content-Type: application/pdf\r\n\r\n`
-  );
-  const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
-  const body = Buffer.concat([header, pdfBuffer, footer]);
-
-  const resp = await fetch(
-    "https://fair2adapt.expertcustomers.ai/services/enrich",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": `multipart/form-data; boundary=${boundary}`,
-      },
-      body,
-    }
-  );
-
-  if (!resp.ok) {
-    throw new Error(`Enrich service failed: ${resp.status}`);
-  }
-
-  return resp.json();
-}
-
-// ---- Expand a text snippet to full sentence boundaries ----
-function expandToSentence(snippet, fullText) {
-  const cleaned = snippet.replace(/\s+/g, " ").trim();
-  // Try to find the snippet in the full text (normalized)
-  const normalizedFull = fullText.replace(/\s+/g, " ");
-  const idx = normalizedFull.indexOf(cleaned);
-
-  if (idx === -1) {
-    // Snippet not found — just try to trim to nearest sentence-like boundaries
-    return cleaned.replace(/^[^A-Z]*/, "").replace(/[^.!?]*$/, "").trim() || cleaned;
-  }
-
-  // Expand backward to the start of the sentence (find last ". " or start of text)
-  let start = idx;
-  while (start > 0) {
-    const ch = normalizedFull[start - 1];
-    if (ch === "." || ch === "!" || ch === "?") {
-      // Check it's a real sentence end (followed by space + uppercase or our snippet)
-      if (start < normalizedFull.length && /\s/.test(normalizedFull[start])) {
-        break;
-      }
-    }
-    start--;
-  }
-
-  // Expand forward to the end of the sentence (find next ". " or end of text)
-  let end = idx + cleaned.length;
-  while (end < normalizedFull.length) {
-    const ch = normalizedFull[end];
-    if ((ch === "." || ch === "!" || ch === "?") && (end + 1 >= normalizedFull.length || /\s/.test(normalizedFull[end + 1]))) {
-      end++; // include the period
-      break;
-    }
-    end++;
-  }
-
-  return normalizedFull.slice(start, end).trim();
-}
-
-// ---- Extract claims and metadata from enrich response ----
-function parseEnrichResponse(enrichData, fullText) {
-  const data = enrichData.response || enrichData;
-
-  // Key sentences — expand to full sentence boundaries using PDF text
-  const keySentences = (data.ke_sentences || []).map((s) => {
-    const raw = s.key_element.replace(/\s+/g, " ").trim();
-    const expanded = fullText ? expandToSentence(raw, fullText) : raw;
-    return {
-      sentence: expanded,
-      score: s.normScore || s.score || 0,
-    };
-  });
-
-  // Sort by score descending
-  keySentences.sort((a, b) => b.score - a.score);
-
-  // Deduplicate sentences that expanded to the same text
-  const seenSentences = new Set();
-  const uniqueSentences = keySentences.filter((s) => {
-    if (seenSentences.has(s.sentence)) return false;
-    seenSentences.add(s.sentence);
-    return true;
-  });
-
-  // Locations with Wikidata URIs for nanopub topics
-  const topics = (data.entity_locations || [])
-    .filter((e) => e.wikidata)
-    .map((e) => ({
-      label: e.entity,
-      uri: e.wikidata,
-    }));
-
-  // Deduplicate topics by URI
-  const seenUris = new Set();
-  const uniqueTopics = topics.filter((t) => {
-    if (seenUris.has(t.uri)) return false;
-    seenUris.add(t.uri);
-    return true;
-  });
-
-  // Climate adaptation tags
-  const tags = (data.tags_fcid || []).map((t) => ({
-    tag: t.tag,
-    value: t.value,
-  }));
-
-  return {
-    claims: uniqueSentences,
-    topics: uniqueTopics,
-    tags,
-  };
-}
 
 // ---- Reformulate key sentences into AIDA claims via claim_extraction ----
 // Sends all sentences concatenated together for better consolidated claims
@@ -320,28 +194,20 @@ export async function handler(event) {
   }
 
   try {
-    console.log("Processing PDF upload. Body length:", event.body?.length);
+    console.log("Processing PDF text. Body length:", event.body?.length);
 
-    // 1. Parse PDF from JSON body (base64-encoded)
-    let buffer, filename;
+    // 1. Parse text from JSON body (extracted client-side via pdf.js)
+    let pdfText, filename;
     try {
-      ({ buffer, filename } = parsePdfFromBody(event));
-      console.log("Parsed PDF:", filename, "Size:", buffer.length);
+      ({ pdfText, filename } = parseBodyText(event));
+      console.log("Received text from:", filename, "Length:", pdfText.length);
     } catch (parseErr) {
       console.error("Parse error:", parseErr.message);
-      return { statusCode: 400, body: JSON.stringify({ message: "Failed to parse upload: " + parseErr.message }) };
+      return { statusCode: 400, body: JSON.stringify({ message: "Failed to parse request: " + parseErr.message }) };
     }
 
     // 2. Extract DOI from PDF text for metadata lookup
-    let pdfData;
-    try {
-      pdfData = await pdf(buffer);
-      console.log("PDF text extracted, length:", pdfData.text?.length);
-    } catch (pdfErr) {
-      console.error("PDF parse error:", pdfErr.message);
-      return { statusCode: 400, body: JSON.stringify({ message: "Failed to read PDF: " + pdfErr.message }) };
-    }
-    const doi = extractDOI(pdfData.text);
+    const doi = extractDOI(pdfText);
     let title = "Untitled";
 
     if (doi) {
@@ -358,16 +224,13 @@ export async function handler(event) {
       if (meta && meta.abstract) abstract = meta.abstract;
     }
     if (!abstract) {
-      // Try to extract abstract section from PDF text
-      // Try multiple patterns: "Abstract" followed by text, ending at Keywords/Introduction/section number
-      const normalizedText = pdfData.text.replace(/\r\n/g, "\n");
+      const normalizedText = pdfText.replace(/\r\n/g, "\n");
       const absMatch = normalizedText.match(/\babstract\b[:\.\s]*\n?([\s\S]{50,3000}?)(?:\n\s*(?:keywords?\b|key\s*words?\b|introduction\b|1[\.\s]))/i)
         || normalizedText.match(/\babstract\b[:\.\s]*\n?([\s\S]{50,2000}?)\n\n/i);
       if (absMatch) {
         abstract = absMatch[1].replace(/\s+/g, " ").trim();
         console.log(`Extracted abstract from PDF text (${abstract.length} chars)`);
       } else {
-        // Last resort: skip headers, take a chunk
         abstract = normalizedText.slice(300, 2300).replace(/\s+/g, " ").trim();
         console.log(`Using PDF text fallback (${abstract.length} chars)`);
       }
@@ -375,20 +238,10 @@ export async function handler(event) {
       console.log(`Got abstract from metadata (${abstract.length} chars)`);
     }
 
-    // 4. Send full PDF to enrich service (for quotes + topics + tags)
+    // 4. Enrich service skipped (requires raw PDF binary, text extracted client-side)
     let keySentences = [];
     let topics = [];
     let tags = [];
-
-    try {
-      const enrichResult = await enrichPaper(buffer, filename);
-      const parsed = parseEnrichResponse(enrichResult, pdfData.text);
-      keySentences = parsed.claims;
-      topics = parsed.topics;
-      tags = parsed.tags;
-    } catch (enrichErr) {
-      console.error("Enrich service unavailable, skipping quotes:", enrichErr.message);
-    }
 
     // 5. Extract AIDA claims from abstract (batch)
     if (!abstract) {
