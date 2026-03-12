@@ -1,0 +1,22 @@
+{
+  "name": "fair2adapt-claim-demo",
+  "version": "0.1.0",
+  "description": "Upload a PDF, extract AIDA claims as nanopublications, create a RoHub Research Object",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Static site, no build step needed'"
+  },
+  "dependencies": {
+    "@nanopub/nanopub-js": "^0.1.0",
+    "@nanopub/sign": "^0.1.0",
+    "@netlify/blobs": "^10.7.2",
+    "busboy": "^1.6.0",
+    "node-fetch": "^3.3.2",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

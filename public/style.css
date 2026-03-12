@@ -1,0 +1,511 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #2a7ae2;
+}
+
+header h1 {
+  color: #2a7ae2;
+  margin-bottom: 0.5rem;
+}
+
+header p {
+  color: #666;
+}
+
+/* Add panel */
+#add-panel {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid #dee2e6;
+}
+
+#add-panel.hidden {
+  display: none;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #888;
+  padding: 0 0.5rem;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+/* Tabs */
+.input-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.tab {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.tab.active {
+  color: #2a7ae2;
+  border-bottom-color: #2a7ae2;
+  font-weight: 600;
+}
+
+.tab:hover {
+  color: #2a7ae2;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Forms */
+#upload-form,
+#bibtex-form {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#upload-form label,
+#bibtex-form label {
+  font-weight: 600;
+  width: 100%;
+}
+
+#upload-form input[type="file"],
+#bibtex-form input[type="file"] {
+  flex: 1;
+  min-width: 200px;
+}
+
+.or-divider {
+  width: 100%;
+  text-align: center;
+  color: #888;
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+#bibtex-text {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+#submit-btn,
+#bibtex-btn {
+  background: #2a7ae2;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+#submit-btn:hover,
+#bibtex-btn:hover {
+  background: #1a5bb5;
+}
+
+#submit-btn:disabled,
+#bibtex-btn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* Status and progress */
+#status {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border-radius: 4px;
+}
+
+#status.info {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+#status.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+#status.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+#progress {
+  margin-top: 1rem;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  height: 2rem;
+}
+
+#progress-bar {
+  height: 100%;
+  background: #2a7ae2;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+#progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Feed header */
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.feed-header h2 {
+  margin: 0;
+}
+
+#add-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+#add-btn:hover {
+  background: #218838;
+}
+
+/* Paper cards */
+.paper-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.paper-card h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.paper-card h3 a {
+  color: #2a7ae2;
+  text-decoration: none;
+}
+
+.paper-card h3 a:hover {
+  text-decoration: underline;
+}
+
+.paper-card .paper-date {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.paper-card h4 {
+  font-size: 0.9rem;
+  color: #555;
+  margin: 0.75rem 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.paper-card .claims-list {
+  list-style: none;
+  padding: 0;
+}
+
+.paper-card .claims-list li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.paper-card .claims-list li:last-child {
+  border-bottom: none;
+}
+
+.paper-card .claims-list a {
+  color: #495057;
+  text-decoration: none;
+}
+
+.paper-card .claims-list a:hover {
+  color: #2a7ae2;
+}
+
+.paper-card .claims-list a::before {
+  content: "\2192 ";
+  color: #2a7ae2;
+}
+
+.paper-card .claims-list li:not(:has(a))::before {
+  content: "\2022 ";
+  color: #2a7ae2;
+}
+
+.paper-card .topics {
+  margin: 0.5rem 0;
+}
+
+.paper-card .topic-tag {
+  display: inline-block;
+  margin: 0.15rem 0.25rem 0.15rem 0;
+}
+
+.paper-card .topic-tag a {
+  background: #e8f4fd;
+  color: #2a7ae2;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.paper-card .topic-tag a:hover {
+  background: #cce5ff;
+}
+
+.paper-card .tags {
+  margin: 0.5rem 0;
+}
+
+.paper-card .tag {
+  display: inline-block;
+  background: #f0f7ee;
+  color: #3d6b2e;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin: 0.15rem 0.25rem 0.15rem 0;
+}
+
+/* Nanopub actions */
+.np-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.np-link {
+  color: #2a7ae2;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.np-link:hover {
+  text-decoration: underline;
+}
+
+.np-publish-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.2rem 0.6rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.np-publish-btn:hover {
+  background: #218838;
+}
+
+.np-publish-btn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+.np-published {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.np-example {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.np-example input {
+  cursor: pointer;
+}
+
+.np-sentence {
+  margin-bottom: 0.2rem;
+}
+
+/* Quote annotations */
+.paper-card .quotes-list {
+  list-style: none;
+  padding: 0;
+}
+
+.paper-card .quotes-list .quote-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.paper-card .quotes-list .quote-item:last-child {
+  border-bottom: none;
+}
+
+.paper-card .quotes-list .quote-text {
+  font-style: italic;
+  color: #495057;
+  position: relative;
+  padding-left: 1rem;
+  border-left: 3px solid #2a7ae2;
+  margin-bottom: 0.25rem;
+}
+
+.paper-card .quotes-list .quote-text a {
+  color: #495057;
+  text-decoration: none;
+}
+
+.paper-card .quotes-list .quote-text a:hover {
+  color: #2a7ae2;
+}
+
+.paper-card .quotes-list .quote-comment {
+  font-size: 0.85rem;
+  color: #666;
+  padding-left: 1rem;
+}
+
+.paper-card .rohub-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: #28a745;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.paper-card .rohub-link:hover {
+  text-decoration: underline;
+}
+
+.empty-feed {
+  color: #888;
+  font-style: italic;
+}
+
+/* Pagination */
+#pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+#pagination button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+#pagination button.active {
+  background: #2a7ae2;
+  color: white;
+  border-color: #2a7ae2;
+}
+
+#pagination button:hover:not(.active) {
+  background: #f0f0f0;
+}
+
+#pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+footer a {
+  color: #2a7ae2;
+}

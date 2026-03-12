@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAIR2Adapt Claim Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>FAIR2Adapt Claim Demo</h1>
+    <p>AIDA claims extracted from scientific papers, published as nanopublications and Research Objects.</p>
+  </header>
+
+  <main>
+    <!-- Add Resources panel (hidden by default) -->
+    <section id="add-panel" class="hidden">
+      <div class="panel-header">
+        <h2>Add Resources</h2>
+        <button id="close-panel" class="close-btn">&times;</button>
+      </div>
+
+      <div class="input-tabs">
+        <button class="tab active" data-tab="pdf-tab">Upload PDF</button>
+        <button class="tab" data-tab="bibtex-tab">Import BibTeX</button>
+      </div>
+
+      <div id="pdf-tab" class="tab-content active">
+        <form id="upload-form">
+          <label for="pdf-file">Select a PDF file:</label>
+          <input type="file" id="pdf-file" name="pdf" accept=".pdf" required>
+          <button type="submit" id="submit-btn">Extract Claims</button>
+        </form>
+      </div>
+
+      <div id="bibtex-tab" class="tab-content">
+        <form id="bibtex-form">
+          <label for="bibtex-file">Upload a BibTeX file (.bib):</label>
+          <input type="file" id="bibtex-file" name="bibtex" accept=".bib,.bibtex,.txt">
+          <div class="or-divider">or paste BibTeX / DOI list below</div>
+          <textarea id="bibtex-text" rows="6" placeholder="Paste BibTeX entries or one DOI per line..."></textarea>
+          <button type="submit" id="bibtex-btn">Process Papers</button>
+        </form>
+      </div>
+
+      <div id="status" class="hidden"></div>
+      <div id="progress" class="hidden">
+        <div id="progress-bar"></div>
+        <span id="progress-text"></span>
+      </div>
+    </section>
+
+    <!-- Main feed -->
+    <section id="feed-section">
+      <div class="feed-header">
+        <h2>Published Papers</h2>
+        <button id="add-btn">+ Resources</button>
+      </div>
+      <div id="feed"></div>
+      <div id="pagination"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Part of the <a href="https://fair2adapt.eu">FAIR2Adapt</a> project.
+    Collection: <a href="https://w3id.org/ro-id/2cace03a-fa6d-450a-9192-dd17fe85a941" target="_blank" rel="noopener">RoHub Research Object</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
