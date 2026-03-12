@@ -19,8 +19,11 @@ const NANOPUB_DIR = IS_NETLIFY ? "/tmp/nanopubs" : join(process.cwd(), "data", "
 // ---- Parse multipart form data ----
 function parseMultipart(event) {
   return new Promise((resolve, reject) => {
+    // Netlify may use different header casing
+    const contentType = event.headers["content-type"] || event.headers["Content-Type"];
+    if (!contentType) return reject(new Error("Missing content-type header"));
     const busboy = Busboy({
-      headers: { "content-type": event.headers["content-type"] },
+      headers: { "content-type": contentType },
     });
 
     let fileBuffer = null;
@@ -346,8 +349,10 @@ export async function handler(event) {
   }
 
   try {
+    console.log("Processing PDF upload. Body length:", event.body?.length, "Base64:", event.isBase64Encoded);
     // 1. Parse uploaded PDF
     const { buffer, filename } = await parseMultipart(event);
+    console.log("Parsed PDF:", filename, "Size:", buffer.length);
 
     // 2. Extract DOI from PDF text for metadata lookup
     const pdfData = await pdf(buffer);
