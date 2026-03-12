@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-const IS_NETLIFY = !!process.env.NETLIFY;
+const IS_NETLIFY = !!process.env.NETLIFY || process.cwd().startsWith("/var/task");
 const NANOPUB_DIR = IS_NETLIFY ? "/tmp/nanopubs" : join(process.cwd(), "data", "nanopubs");
 
 export async function handler(event) {

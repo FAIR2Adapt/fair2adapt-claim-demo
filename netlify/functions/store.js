@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
 const DATA_FILE = join(process.cwd(), "data", "papers.json");
-const IS_NETLIFY = !!process.env.NETLIFY;
+const IS_NETLIFY = !!process.env.NETLIFY || process.cwd().startsWith("/var/task");
 
 // ---- Netlify Blobs (production) ----
 async function getBlobStore() {

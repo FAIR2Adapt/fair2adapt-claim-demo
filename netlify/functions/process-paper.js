@@ -4,7 +4,7 @@ import { savePaper } from "./store.js";
 import { loginRoHub, getOrCreateClaimsFolder, createPaperRO, addROToFolder } from "./rohub.js";
 import { generateAIDANanopub, generateQuoteNanopub } from "./nanopub.js";
 
-const IS_NETLIFY = !!process.env.NETLIFY;
+const IS_NETLIFY = !!process.env.NETLIFY || process.cwd().startsWith("/var/task");
 const NANOPUB_DIR = IS_NETLIFY ? "/tmp/nanopubs" : join(process.cwd(), "data", "nanopubs");
 
 // ---- ENV VARS (set in Netlify dashboard or .env) ----
