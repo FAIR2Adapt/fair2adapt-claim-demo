@@ -391,7 +391,13 @@ document.addEventListener("click", async (e) => {
       body: JSON.stringify({ trig, isExample }),
     });
 
-    const result = await response.json();
+    const respText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(respText);
+    } catch (_) {
+      throw new Error(`Server error (${response.status}): ${respText.slice(0, 200)}`);
+    }
 
     if (result.published && result.nanopub_uri) {
       // Replace button with published link
@@ -401,14 +407,15 @@ document.addEventListener("click", async (e) => {
         <span class="np-published">published</span>
       `;
     } else {
-      btn.textContent = "not yet signed";
-      btn.disabled = true;
-      btn.title = result.message;
+      btn.textContent = result.message || "failed";
+      btn.disabled = false;
+      console.error("Publish response:", result);
     }
   } catch (err) {
     btn.textContent = "error";
-    btn.disabled = true;
-    console.error("Publish error:", err);
+    btn.disabled = false;
+    console.error("Publish error:", err.message);
+    alert("Publish error: " + err.message);
   }
 });
 
