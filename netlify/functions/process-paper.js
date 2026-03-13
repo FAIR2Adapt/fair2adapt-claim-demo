@@ -1,11 +1,6 @@
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
 import { savePaper } from "./store.js";
 import { loginRoHub, getOrCreateClaimsFolder, createPaperRO, addROToFolder } from "./rohub.js";
 import { generateAIDANanopub, generateQuoteNanopub } from "./nanopub.js";
-
-const IS_NETLIFY = !!process.env.NETLIFY || process.cwd().startsWith("/var/task");
-const NANOPUB_DIR = IS_NETLIFY ? "/tmp/nanopubs" : join(process.cwd(), "data", "nanopubs");
 
 // ---- ENV VARS (set in Netlify dashboard or .env) ----
 // NANOPUB_PRIVATE_KEY  - software agent RSA private key
@@ -129,38 +124,21 @@ async function extractCommentForSentence(sentence) {
   }
 }
 
-// ---- Save TriG file to data/nanopubs/ ----
-function saveNanopubTriG(paperId, index, type, trig) {
-  if (!existsSync(NANOPUB_DIR)) {
-    mkdirSync(NANOPUB_DIR, { recursive: true });
-  }
-  const filename = `${paperId}_${type}_${index}.trig`;
-  const filepath = join(NANOPUB_DIR, filename);
-  writeFileSync(filepath, trig, "utf-8");
-  console.log(`Saved nanopub: ${filename}`);
-  return filepath;
-}
-
-// ---- Generate nanopub TriG for both types and save to disk ----
-// Returns { aidaNanopubs: [...], quoteNanopubs: [...] }
+// ---- Generate nanopub TriG for both types ----
+// Returns { aidaNanopubs: [...], quoteNanopubs: [...] } with trig content inline
 async function generateAllNanopubs(keySentences, aidaClaims, doi, topics) {
-  const paperId = doi ? doi.replace(/\//g, "_") : Date.now().toString();
-
-  const aidaNanopubs = aidaClaims.map((claim, i) => {
+  const aidaNanopubs = aidaClaims.map((claim) => {
     const trig = generateAIDANanopub({ claim: claim.sentence, doi, topics });
-    const filename = `${paperId}_aida_${i + 1}.trig`;
-    saveNanopubTriG(paperId, i + 1, "aida", trig);
     return {
       sentence: claim.sentence,
       type: "aida",
-      trig_file: filename,
+      trig,
       nanopub_uri: null,
     };
   });
 
   // Per-sentence: get comment for each key sentence → quote nanopub
   const quoteNanopubs = [];
-  let quoteIndex = 0;
   for (const ks of keySentences) {
     const comment = await extractCommentForSentence(ks.sentence);
     if (comment && doi) {
@@ -170,14 +148,11 @@ async function generateAllNanopubs(keySentences, aidaClaims, doi, topics) {
         doi,
       });
       if (trig) {
-        quoteIndex++;
-        const filename = `${paperId}_quote_${quoteIndex}.trig`;
-        saveNanopubTriG(paperId, quoteIndex, "quote", trig);
         quoteNanopubs.push({
           quotation: ks.sentence,
           comment,
           type: "quote",
-          trig_file: filename,
+          trig,
           nanopub_uri: null,
         });
       }
@@ -264,7 +239,7 @@ export async function handler(event) {
     const publishedClaims = aidaNanopubs.map((np) => ({
       sentence: np.sentence,
       nanopub_uri: np.nanopub_uri,
-      trig_file: np.trig_file,
+      trig: np.trig,
       type: "aida",
     }));
 
@@ -273,7 +248,7 @@ export async function handler(event) {
       quotation: np.quotation,
       comment: np.comment,
       nanopub_uri: np.nanopub_uri,
-      trig_file: np.trig_file,
+      trig: np.trig,
       type: "quote",
     }));
 

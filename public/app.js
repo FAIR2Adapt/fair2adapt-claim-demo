@@ -228,7 +228,7 @@ function renderPaperCard(paper) {
           <div class="np-sentence">${c.sentence}</div>
           <div class="np-actions">
             <label class="np-example"><input type="checkbox" checked data-id="${id}"> example</label>
-            <button class="np-publish-btn" data-file="${c.trig_file || ""}" data-id="${id}">publish</button>
+            <button class="np-publish-btn" data-trig="${btoa(c.trig || "")}" data-id="${id}">publish</button>
           </div>
         </li>`;
       })
@@ -257,7 +257,7 @@ function renderPaperCard(paper) {
           <div class="quote-comment">${q.comment}</div>
           <div class="np-actions">
             <label class="np-example"><input type="checkbox" checked data-id="${id}"> example</label>
-            <button class="np-publish-btn" data-file="${q.trig_file || ""}" data-id="${id}">publish</button>
+            <button class="np-publish-btn" data-trig="${btoa(q.trig || "")}" data-id="${id}">publish</button>
           </div>
         </li>`;
       })
@@ -371,9 +371,11 @@ document.addEventListener("click", async (e) => {
   const btn = e.target.closest(".np-publish-btn");
   if (!btn) return;
 
-  const file = btn.dataset.file;
+  const trigBase64 = btn.dataset.trig;
   const id = btn.dataset.id;
-  if (!file) return;
+  if (!trigBase64) return;
+
+  const trig = atob(trigBase64);
 
   // Check the example checkbox state
   const checkbox = document.querySelector(`.np-example input[data-id="${id}"]`);
@@ -386,7 +388,7 @@ document.addEventListener("click", async (e) => {
     const response = await fetch("/.netlify/functions/publish-nanopub", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file, isExample }),
+      body: JSON.stringify({ trig, isExample }),
     });
 
     const result = await response.json();
